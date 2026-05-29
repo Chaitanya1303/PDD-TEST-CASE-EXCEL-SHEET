@@ -4,7 +4,7 @@ import {
   Droplets, Zap, Moon, Wind, Thermometer, AlertCircle, Apple, Activity,
   CheckCircle, XCircle, Lightbulb, AlertTriangle, Salad, Fish, Plus, X,
   Package, Flame, Clock, Shield, HelpCircle, LogOut, ChevronRight, Star,
-  GlassWater, Minus,
+  GlassWater, Minus, FileText,
 } from "lucide-react";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY";
@@ -338,7 +338,7 @@ const hairQs = [
   { q: "What is your primary hair concern?", a: ["Hair fall", "Dandruff", "Dryness", "Oiliness", "Frizz"] },
 ];
 
-function UploadZone({ icon: Icon, title, image, onPick, onClear }) {
+function UploadZone({ icon: Icon, title, image, onPick, onClear, accept = "image/*" }) {
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
@@ -398,6 +398,8 @@ function UploadZone({ icon: Icon, title, image, onPick, onClear }) {
     }
   };
 
+  const isPdf = image && image.startsWith("data:application/pdf");
+
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ ...label, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -411,7 +413,7 @@ function UploadZone({ icon: Icon, title, image, onPick, onClear }) {
         )}
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={(e) => {
+      <input ref={fileInputRef} type="file" accept={accept} hidden onChange={(e) => {
         const file = e.target.files?.[0];
         if (file) {
           const r = new FileReader();
@@ -451,11 +453,18 @@ function UploadZone({ icon: Icon, title, image, onPick, onClear }) {
               transition: "all 0.25s"
             }}>
             {image ? (
-              <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              isPdf ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, color: C.teal }}>
+                  <FileText size={32} color={C.teal} />
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>PDF Report Uploaded</span>
+                </div>
+              ) : (
+                <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              )
             ) : (
               <>
                 <Icon size={28} color={C.teal} />
-                <span style={{ fontSize: 12, color: C.body, fontWeight: 500 }}>Tap to upload photo</span>
+                <span style={{ fontSize: 12, color: C.body, fontWeight: 500 }}>Tap to upload file</span>
               </>
             )}
           </button>
@@ -603,11 +612,15 @@ async function callGemini(systemPrompt, userText, images = []) {
 
 const ANALYSIS_SYSTEM = "You are Glowtics, an expert AI skin, hair and nutrition health coach. First, validate if the uploaded photo is indeed a valid close-up or clear shot of a human face, skin area, scalp, or hair. If the photo is invalid (e.g. an animal, landscape, random object, extremely blurry, or not human skin/hair), respond ONLY with a JSON object where \"isValidImage\" is false, and \"invalidImageError\" is a helpful string explaining what is wrong (e.g. \"The uploaded photo does not appear to be a human face or scalp. Please upload or capture a clear, close-up photo.\"), and all other keys can be null or empty. If the photo is valid, analyze the photo along with the diagnostic answers and lifestyle data. Respond ONLY with a valid JSON object, no markdown, no preamble, no explanation. JSON keys required: isValidImage (boolean, set to true), invalidImageError (string, set to null), glowScore (number 0-100), skinScore (number 0-100), hairScore (number 0-100), nutritionScore (number 0-100), dailySummary (string, one sentence), rootCause (string), routineReminder (string), insights (array of 3 objects each with: icon (one of: droplets, zap, moon, wind, thermometer), title (string), value (string), colorDot (one of: teal, amber, coral, green)), skinAdvice (object: headline string, explanation string), nutritionAdvice (object: headline string, explanation string), lifestyleAdvice (object: headline string, explanation string), topIngredients (array of 3 strings), avoidIngredients (array of 3 strings), dailyTip (string), triggers (array of objects each with: label string, percentage number), nutrientDeficiencies (object with keys: vitaminC, zinc, omega3, iron, biotin — each a number 0-100 representing current level vs ideal), nutritionPlan (object: vitaminC object with current number and target number, same for vitaminD, biotin, zinc, omega3), recommendedFoods (array of 7 objects each with: name string, benefit string)).";
 
+const BLOOD_REPORT_SYSTEM = "You are Glowtics, an expert AI skin, hair and nutrition health coach. First, validate if the uploaded document or photo is indeed a valid medical blood report or lab test result. If the document is invalid (e.g. not a blood report, random document, landscape, animal, receipt, or unrelated image), respond ONLY with a JSON object where \"isValidReport\" is false, and \"invalidReportError\" is a helpful string explaining what is wrong (e.g. \"The uploaded file does not appear to be a valid medical blood report. Please upload a clear document or image containing blood test results.\"), and all other keys can be null or empty. If the report is valid, analyze the blood biomarkers (e.g. iron, ferritin, vitamins, thyroid, lipids, etc.) in the context of skin, hair, and overall health. Respond ONLY with a valid JSON object, no markdown, no preamble, no explanation. JSON keys required: isValidReport (boolean, set to true), invalidReportError (string, set to null), glowScore (number 0-100), skinScore (number 0-100), hairScore (number 0-100), nutritionScore (number 0-100), dailySummary (string, one sentence summarizing the blood report findings), rootCause (string identifying key biomarker deficiencies or insights), routineReminder (string), insights (array of 3 objects each with: icon (one of: droplets, zap, moon, wind, thermometer), title (string), value (string), colorDot (one of: teal, amber, coral, green)), skinAdvice (object: headline string, explanation string), nutritionAdvice (object: headline string, explanation string), lifestyleAdvice (object: headline string, explanation string), topIngredients (array of 3 strings), avoidIngredients (array of 3 strings), dailyTip (string), triggers (array of objects each with: label string, percentage number), nutrientDeficiencies (object with keys: vitaminC, zinc, omega3, iron, biotin — each a number 0-100 representing current level vs ideal), nutritionPlan (object: vitaminC object with current number and target number, same for vitaminD, biotin, zinc, omega3), recommendedFoods (array of 7 objects each with: name string, benefit string)).";
+
 function AnalyzeTab() {
   const { data, update, pushActivity, setTab } = useApp();
   const [analysisType, setAnalysisType] = useState("skin"); // "skin" or "hair"
+  const [inputMethod, setInputMethod] = useState("photo"); // "photo" or "blood"
   const [skinImg, setSkinImg] = useState(null);
   const [hairImg, setHairImg] = useState(null);
+  const [bloodReportFile, setBloodReportFile] = useState(null);
   const [skinAns, setSkinAns] = useState(Array(5).fill(null));
   const [hairAns, setHairAns] = useState(Array(5).fill(null));
   const [sleep, setSleep] = useState(data.dailyLog.sleep);
@@ -629,42 +642,64 @@ function AnalyzeTab() {
 
   const skinDone = skinImg && skinAns.every((val) => val !== null && (!Array.isArray(val) || val.length > 0));
   const hairDone = hairImg && hairAns.every(Boolean);
-  const ready = analysisType === "skin" ? skinDone : hairDone;
+  const ready = inputMethod === "photo" ? (analysisType === "skin" ? skinDone : hairDone) : !!bloodReportFile;
 
   const handlePick = (which, b64) => {
-    if (which === "skin") setSkinImg(b64); else setHairImg(b64);
+    if (which === "skin") setSkinImg(b64);
+    else if (which === "hair") setHairImg(b64);
+    else setBloodReportFile(b64);
   };
 
   const analyze = async () => {
     setLoading(true); setErr(null);
     try {
-      const targetImg = analysisType === "skin" ? skinImg : hairImg;
-      const targetAns = analysisType === "skin" ? skinAns : hairAns;
-      
-      const activeProducts = [];
-      if (analysisType === "skin") {
-        if (skincareProducts.facewash.used) activeProducts.push(`Face Wash (Brand: ${skincareProducts.facewash.brand || "Not specified"})`);
-        if (skincareProducts.serum.used) activeProducts.push(`Serum (Brand: ${skincareProducts.serum.brand || "Not specified"})`);
-        if (skincareProducts.moisturizer.used) activeProducts.push(`Moisturizer (Brand: ${skincareProducts.moisturizer.brand || "Not specified"})`);
-      } else {
-        if (hairProducts.shampoo.used) activeProducts.push(`Shampoo (Brand: ${hairProducts.shampoo.brand || "Not specified"})`);
-        if (hairProducts.conditioner.used) activeProducts.push(`Conditioner (Brand: ${hairProducts.conditioner.brand || "Not specified"})`);
-        if (hairProducts.oil.used) activeProducts.push(`Hair Oil/Serum (Brand: ${hairProducts.oil.brand || "Not specified"})`);
-      }
+      let json;
+      let activeProducts = [];
 
-      const userText = `Analysis Target: ${analysisType.toUpperCase()}\nUser diagnostic answers: ${JSON.stringify(targetAns)}\nSleep: ${sleep}h, Stress: ${stress}/5, Water: ${water} glasses\nSkincare/Haircare products: ${activeProducts.join(", ") || "None"}\nReturn the required JSON only.`;
-      const images = [targetImg].filter(Boolean);
-      const json = await callGemini(ANALYSIS_SYSTEM, userText, images);
-      
-      // Enforce image content validation checks
-      if (json.isValidImage === false) {
-        throw new Error(json.invalidImageError || "The uploaded image does not appear to be a human face or scalp. Please capture a clear, close-up photo.");
+      if (inputMethod === "photo") {
+        const targetImg = analysisType === "skin" ? skinImg : hairImg;
+        const targetAns = analysisType === "skin" ? skinAns : hairAns;
+        
+        if (analysisType === "skin") {
+          if (skincareProducts.facewash.used) activeProducts.push(`Face Wash (Brand: ${skincareProducts.facewash.brand || "Not specified"})`);
+          if (skincareProducts.serum.used) activeProducts.push(`Serum (Brand: ${skincareProducts.serum.brand || "Not specified"})`);
+          if (skincareProducts.moisturizer.used) activeProducts.push(`Moisturizer (Brand: ${skincareProducts.moisturizer.brand || "Not specified"})`);
+        } else {
+          if (hairProducts.shampoo.used) activeProducts.push(`Shampoo (Brand: ${hairProducts.shampoo.brand || "Not specified"})`);
+          if (hairProducts.conditioner.used) activeProducts.push(`Conditioner (Brand: ${hairProducts.conditioner.brand || "Not specified"})`);
+          if (hairProducts.oil.used) activeProducts.push(`Hair Oil/Serum (Brand: ${hairProducts.oil.brand || "Not specified"})`);
+        }
+
+        const userText = `Analysis Target: ${analysisType.toUpperCase()}\nUser diagnostic answers: ${JSON.stringify(targetAns)}\nSleep: ${sleep}h, Stress: ${stress}/5, Water: ${water} glasses\nSkincare/Haircare products: ${activeProducts.join(", ") || "None"}\nReturn the required JSON only.`;
+        const images = [targetImg].filter(Boolean);
+        json = await callGemini(ANALYSIS_SYSTEM, userText, images);
+        
+        // Enforce image content validation checks
+        if (json.isValidImage === false) {
+          throw new Error(json.invalidImageError || "The uploaded image does not appear to be a human face or scalp. Please capture a clear, close-up photo.");
+        }
+      } else {
+        // Blood report analysis flow
+        const userText = `Analysis Target: BLOOD REPORT ANALYSIS\nSleep: ${sleep}h, Stress: ${stress}/5, Water: ${water} glasses\nReturn the required JSON only.`;
+        const files = [bloodReportFile].filter(Boolean);
+        json = await callGemini(BLOOD_REPORT_SYSTEM, userText, files);
+        
+        // Enforce blood report content validation checks
+        if (json.isValidReport === false) {
+          throw new Error(json.invalidReportError || "The uploaded file does not appear to be a valid medical blood report. Please upload a clear document or image containing blood test results.");
+        }
       }
 
       const now = new Date().toISOString();
       update((d) => {
-        if (analysisType === "skin") d.analysisResults.skinAnalysis = json;
-        else d.analysisResults.hairAnalysis = json;
+        if (inputMethod === "photo") {
+          if (analysisType === "skin") d.analysisResults.skinAnalysis = json;
+          else d.analysisResults.hairAnalysis = json;
+        } else {
+          // Set blood report results to both skin & hair analysis to seamlessly update general logs
+          d.analysisResults.skinAnalysis = json;
+          d.analysisResults.hairAnalysis = json;
+        }
         d.analysisResults.lastAnalyzedAt = now;
         d.reports.glowScoreHistory.push({ score: json.glowScore, at: now });
         d.dailyLog = { sleep, stress, water, food: [], productsUsed: activeProducts };
@@ -672,7 +707,7 @@ function AnalyzeTab() {
         const today = new Date().toDateString();
         if (!d.logDays.includes(today)) d.logDays.push(today);
       });
-      pushActivity("zap", `Completed AI ${analysisType} analysis`);
+      pushActivity("zap", inputMethod === "photo" ? `Completed AI ${analysisType} analysis` : "Completed AI blood report analysis");
       setResult(json);
     } catch (e) {
       setErr(e.message || "Analysis failed");
@@ -740,30 +775,53 @@ function AnalyzeTab() {
   return (
     <div style={{ padding: "24px 20px 100px", position: "relative" }}>
       <h1 style={{ fontSize: 24, marginBottom: 6 }}>Analyze</h1>
-      <p style={{ fontSize: 13, color: C.muted, marginBottom: 20 }}>Upload a photo and answer a few questions for personalized AI insights.</p>
+      <p style={{ fontSize: 13, color: C.muted, marginBottom: 20 }}>Upload a photo or submit a medical report for personalized AI insights.</p>
 
-      {/* Analysis Type Pill Selector */}
+      {/* Input Method Switcher Pill */}
       <div style={{ display: "flex", background: C.tint, borderRadius: 12, padding: 4, marginBottom: 20 }}>
-        {["skin", "hair"].map((t) => {
-          const active = analysisType === t;
+        {[
+          { id: "photo", label: "Photo Capture" },
+          { id: "blood", label: "Blood Report" },
+        ].map((m) => {
+          const active = inputMethod === m.id;
           return (
-            <button key={t} className="glow-tap" onClick={() => setAnalysisType(t)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: active ? C.teal : "transparent", color: active ? "#fff" : C.muted, fontWeight: 600, fontSize: 13, textTransform: "capitalize", transition: "all 0.2s" }}>
-              {t} Care
+            <button key={m.id} className="glow-tap" onClick={() => setInputMethod(m.id)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: active ? C.teal : "transparent", color: active ? "#fff" : C.muted, fontWeight: 600, fontSize: 13, transition: "all 0.2s" }}>
+              {m.label}
             </button>
           );
         })}
       </div>
 
+      {/* Analysis Type Pill Selector (Only shown for photo input) */}
+      {inputMethod === "photo" && (
+        <div style={{ display: "flex", background: C.tint, borderRadius: 12, padding: 4, marginBottom: 20 }} className="glow-fadein">
+          {["skin", "hair"].map((t) => {
+            const active = analysisType === t;
+            return (
+              <button key={t} className="glow-tap" onClick={() => setAnalysisType(t)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: active ? C.teal : "transparent", color: active ? "#fff" : C.muted, fontWeight: 600, fontSize: 13, textTransform: "capitalize", transition: "all 0.2s" }}>
+                {t} Care
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 20 }}>
-        {analysisType === "skin" ? (
-          <div className="glow-fadein">
-            <UploadZone icon={Camera} title="Skin Photo" image={skinImg} onPick={(b64) => handlePick("skin", b64)} onClear={() => setSkinImg(null)} />
-            {skinImg && <QuestionBlock qs={skinQs} answers={skinAns} setAnswers={setSkinAns} />}
-          </div>
+        {inputMethod === "photo" ? (
+          analysisType === "skin" ? (
+            <div className="glow-fadein">
+              <UploadZone icon={Camera} title="Skin Photo" image={skinImg} onPick={(b64) => handlePick("skin", b64)} onClear={() => setSkinImg(null)} />
+              {skinImg && <QuestionBlock qs={skinQs} answers={skinAns} setAnswers={setSkinAns} />}
+            </div>
+          ) : (
+            <div className="glow-fadein">
+              <UploadZone icon={Scan} title="Scalp / Hair Photo" image={hairImg} onPick={(b64) => handlePick("hair", b64)} onClear={() => setHairImg(null)} />
+              {hairImg && <QuestionBlock qs={hairQs} answers={hairAns} setAnswers={setHairAns} />}
+            </div>
+          )
         ) : (
           <div className="glow-fadein">
-            <UploadZone icon={Scan} title="Scalp / Hair Photo" image={hairImg} onPick={(b64) => handlePick("hair", b64)} onClear={() => setHairImg(null)} />
-            {hairImg && <QuestionBlock qs={hairQs} answers={hairAns} setAnswers={setHairAns} />}
+            <UploadZone icon={FileText} title="Blood Report Document" image={bloodReportFile} onPick={(b64) => handlePick("blood", b64)} onClear={() => setBloodReportFile(null)} accept="image/*,application/pdf" />
           </div>
         )}
       </div>
@@ -806,56 +864,58 @@ function AnalyzeTab() {
           </div>
         </div>
 
-        <div style={{ marginTop: 8 }}>
-          <div style={{ ...label, marginBottom: 12 }}>
-            {analysisType === "skin" ? "Skincare Products Used" : "Haircare Products Used"}
-          </div>
-          {(analysisType === "skin"
-            ? [
-                { id: "facewash", label: "Face Wash" },
-                { id: "serum", label: "Serum" },
-                { id: "moisturizer", label: "Moisturizer" },
-              ]
-            : [
-                { id: "shampoo", label: "Shampoo" },
-                { id: "conditioner", label: "Conditioner" },
-                { id: "oil", label: "Hair Oil/Serum" },
-              ]
-          ).map((prod) => {
-            const state = analysisType === "skin" ? skincareProducts[prod.id] : hairProducts[prod.id];
-            const setProducts = analysisType === "skin" ? setSkincareProducts : setHairProducts;
-            return (
-              <div key={prod.id} style={{ marginBottom: 12, background: C.bg, padding: 12, borderRadius: 12, border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{prod.label}</span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[
-                      { val: true, text: "Yes" },
-                      { val: false, text: "No" },
-                    ].map((btn) => {
-                      const sel = state.used === btn.val;
-                      return (
-                        <button key={btn.text} className="glow-tap" onClick={() => setProducts((p) => ({ ...p, [prod.id]: { ...p[prod.id], used: btn.val } }))}
-                          style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: sel ? C.teal : C.tint, color: sel ? "#fff" : C.muted, transition: "all 0.15s" }}>
-                          {btn.text}
-                        </button>
-                      );
-                    })}
+        {inputMethod === "photo" && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ ...label, marginBottom: 12 }}>
+              {analysisType === "skin" ? "Skincare Products Used" : "Haircare Products Used"}
+            </div>
+            {(analysisType === "skin"
+              ? [
+                  { id: "facewash", label: "Face Wash" },
+                  { id: "serum", label: "Serum" },
+                  { id: "moisturizer", label: "Moisturizer" },
+                ]
+              : [
+                  { id: "shampoo", label: "Shampoo" },
+                  { id: "conditioner", label: "Conditioner" },
+                  { id: "oil", label: "Hair Oil/Serum" },
+                ]
+            ).map((prod) => {
+              const state = analysisType === "skin" ? skincareProducts[prod.id] : hairProducts[prod.id];
+              const setProducts = analysisType === "skin" ? setSkincareProducts : setHairProducts;
+              return (
+                <div key={prod.id} style={{ marginBottom: 12, background: C.bg, padding: 12, borderRadius: 12, border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{prod.label}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {[
+                        { val: true, text: "Yes" },
+                        { val: false, text: "No" },
+                      ].map((btn) => {
+                        const sel = state.used === btn.val;
+                        return (
+                          <button key={btn.text} className="glow-tap" onClick={() => setProducts((p) => ({ ...p, [prod.id]: { ...p[prod.id], used: btn.val } }))}
+                            style={{ padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: sel ? C.teal : C.tint, color: sel ? "#fff" : C.muted, transition: "all 0.15s" }}>
+                            {btn.text}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                  {state.used === true && (
+                    <div className="glow-fadein">
+                      <input value={state.brand} onChange={(e) => {
+                        const v = e.target.value;
+                        setProducts((p) => ({ ...p, [prod.id]: { ...p[prod.id], brand: v } }));
+                      }} placeholder={`What brand do you use?`}
+                        style={{ width: "100%", padding: "8px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12, background: C.surface, outline: "none", color: C.dark }} />
+                    </div>
+                  )}
                 </div>
-                {state.used === true && (
-                  <div className="glow-fadein">
-                    <input value={state.brand} onChange={(e) => {
-                      const v = e.target.value;
-                      setProducts((p) => ({ ...p, [prod.id]: { ...p[prod.id], brand: v } }));
-                    }} placeholder={`What brand do you use?`}
-                      style={{ width: "100%", padding: "8px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12, background: C.surface, outline: "none", color: C.dark }} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {err && (
@@ -872,26 +932,32 @@ function AnalyzeTab() {
             <AlertCircle size={14} color={C.coral} /> Remaining steps:
           </div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.body, display: "flex", flexDirection: "column", gap: 4 }}>
-            {analysisType === "skin" ? (
-              <>
-                {!skinImg && <li>Upload or capture a Skin Photo</li>}
-                {skinAns.map((ans, idx) => {
-                  const isAnswered = ans !== null && (!Array.isArray(ans) || ans.length > 0);
-                  if (!isAnswered) {
-                    return <li key={idx}>Answer question {idx + 1}: "{skinQs[idx].q}"</li>;
-                  }
-                  return null;
-                })}
-              </>
+            {inputMethod === "photo" ? (
+              analysisType === "skin" ? (
+                <>
+                  {!skinImg && <li>Upload or capture a Skin Photo</li>}
+                  {skinAns.map((ans, idx) => {
+                    const isAnswered = ans !== null && (!Array.isArray(ans) || ans.length > 0);
+                    if (!isAnswered) {
+                      return <li key={idx}>Answer question {idx + 1}: "{skinQs[idx].q}"</li>;
+                    }
+                    return null;
+                  })}
+                </>
+              ) : (
+                <>
+                  {!hairImg && <li>Upload or capture a Scalp / Hair Photo</li>}
+                  {hairAns.map((ans, idx) => {
+                    if (ans === null) {
+                      return <li key={idx}>Answer question {idx + 1}: "{hairQs[idx].q}"</li>;
+                    }
+                    return null;
+                  })}
+                </>
+              )
             ) : (
               <>
-                {!hairImg && <li>Upload or capture a Scalp / Hair Photo</li>}
-                {hairAns.map((ans, idx) => {
-                  if (ans === null) {
-                    return <li key={idx}>Answer question {idx + 1}: "{hairQs[idx].q}"</li>;
-                  }
-                  return null;
-                })}
+                {!bloodReportFile && <li>Upload a Blood Report (PDF or Image)</li>}
               </>
             )}
           </ul>

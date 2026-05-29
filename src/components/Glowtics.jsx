@@ -338,7 +338,7 @@ const hairQs = [
   { q: "What is your primary hair concern?", a: ["Hair fall", "Dandruff", "Dryness", "Oiliness", "Frizz"] },
 ];
 
-function UploadZone({ icon: Icon, title, image, onPick, onClear, accept = "image/*" }) {
+function UploadZone({ icon: Icon, title, image, onPick, onClear, accept = "image/*", showCamera = true }) {
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
@@ -469,7 +469,7 @@ function UploadZone({ icon: Icon, title, image, onPick, onClear, accept = "image
             )}
           </button>
 
-          {!image && (
+          {!image && showCamera && (
             <button onClick={startCamera} style={{ width: "100%", padding: "10px 14px", borderRadius: 12, border: `1px solid ${C.teal}`, background: C.tealTint, color: C.teal, fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s" }}>
               <Camera size={14} /> Open Live Camera
             </button>
@@ -839,7 +839,7 @@ function AnalyzeTab() {
               </div>
             </div>
 
-            <UploadZone icon={FileText} title="Blood Report Document" image={bloodReportFile} onPick={(b64) => handlePick("blood", b64)} onClear={() => setBloodReportFile(null)} accept="image/*,application/pdf" />
+            <UploadZone icon={FileText} title="Blood Report Document" image={bloodReportFile} onPick={(b64) => handlePick("blood", b64)} onClear={() => setBloodReportFile(null)} accept="image/*,application/pdf" showCamera={false} />
           </div>
         )}
       </div>
